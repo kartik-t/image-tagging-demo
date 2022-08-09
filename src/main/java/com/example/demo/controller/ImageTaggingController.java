@@ -19,6 +19,12 @@ public class ImageTaggingController {
     @Autowired
     ImageRepository imageRepository;
 
+    /**
+     * Returns all images if no objects are passed into the URL parameters, otherwise searches for passed in tags.
+     *
+     * @param objects This parameter dictates which tags are being searched for.
+     * @return Either all images or ones with specific tags.
+     */
     @GetMapping("/images")
     ResponseEntity<List<Image>> getAllImages(@RequestParam(value = "objects", required=false) String objects) {
         List<Image> result = null;
@@ -38,6 +44,12 @@ public class ImageTaggingController {
         return new ResponseEntity<>(result,HttpStatus.OK);
     }
 
+    /**
+     * Returns specific entry based on Image.id
+     *
+     * @param id Image.id (unique identifier assigned to the image)
+     * @return Returns the Image row with the given Image.id
+     */
     @GetMapping("/images/{id}")
     public ResponseEntity<?> getImageById(@PathVariable String id) {
         if(StringUtils.isBlank(id)) {
@@ -54,11 +66,16 @@ public class ImageTaggingController {
         return new ResponseEntity<>(result,HttpStatus.OK);
     }
 
+    /**
+     * Calls Imagga API to get image detection tags and then creates new Image rows in the repository.
+     *
+     * @param request custom request class that contains url, filePath, label, and the objectDetection boolean.
+     * @return Image is returned with the relevant metadata.
+     */
     @PostMapping(value="/images")
     ResponseEntity<?> tagImage(@RequestBody  ImagePostRequest request) {
         Image result = null;
         if(request.isObjectDetection()) {
-            // Call Imagga API here
             if(StringUtils.isBlank(request.getFilePath()) && StringUtils.isBlank(request.getUrl())){
                 return new ResponseEntity<>("Either file path or URL are required for the image.", HttpStatus.BAD_REQUEST);
             }
@@ -66,6 +83,7 @@ public class ImageTaggingController {
             result.setLabel(request.getLabel());
             result.setUrl(request.getUrl());
             List<String> tags = null;
+            // Call Imagga API here
             if(StringUtils.isBlank(request.getFilePath())){
                 tags = ImageTaggingUtility.getTagsFromImageUrl(request);
                 result.setUrl(request.getUrl());
@@ -73,15 +91,18 @@ public class ImageTaggingController {
                 tags = ImageTaggingUtility.getTagsFromFile(request);
                 result.setFilePath(request.getFilePath());
             }
+            // Parse tags
             StringBuilder builder = new StringBuilder();
             if(tags != null && tags.size() != 0) {
                 for(String t : tags) {
                     builder.append(t).append(";");
                 }
                 result.setTags(builder.toString());
+            } else {
+                result.setTags("No tags found. See console for errors.");
             }
-
         } else {
+            // Create image without tags as objectDetection was false.
             result = new Image();
             result.setLabel(request.getLabel());
             result.setUrl(request.getUrl());

@@ -25,12 +25,14 @@ public class ImageTaggingUtility {
     public static List<String> getTagsFromImageUrl(ImagePostRequest postRequest) {
         // Create URL
         String url = String.format("%s?image_url=%s&limit=%s&threshold=%s",IMAGGA_ENDPOINT,postRequest.getUrl(),TAG_LIMIT,TAG_CONFIDENCE_THRESHOLD);
+        // Init IO variables
         HttpURLConnection connection = null;
         BufferedReader connectionInput = null;
         InputStreamReader inputStreamReader = null;
         String response = null;
         URL urlObject = null;
         try {
+            // Call Imagga GET endpoint to send image URL and get detected tags.
             urlObject = new URL(url);
             connection = (HttpURLConnection) urlObject.openConnection();
             connection.setRequestProperty("Authorization", basicAuth);
@@ -59,10 +61,17 @@ public class ImageTaggingUtility {
         return getTagListFromJson(response,false);
     }
 
+    /**
+     * Call Imagga POST endpoint to upload the file and get detected tags.
+     *
+     * @param postRequest custom request class that contains url, filePath, label, and the objectDetection boolean.
+     * @return List of tags detected.
+     */
     @SuppressWarnings("ReassignedVariable")
     public static List<String> getTagsFromFile(ImagePostRequest postRequest) {
         String filePath = postRequest.getFilePath();
         File fileToUpload = new File(filePath);
+        // Init IO variables
         String response = null;
         URL urlObject = null;
         HttpURLConnection connection = null;
@@ -124,16 +133,19 @@ public class ImageTaggingUtility {
         }
         JSONObject statusObject = jsonObject.getJSONObject("status");
         JSONObject resultObject = jsonObject.getJSONObject("result");
+        // Check web service status to make sure
         if(!"success".equals(statusObject.get("type"))) {
             System.out.println("Could not get tags: " + statusObject.getString("text"));
             return null;
         }
         JSONArray jsonArray = resultObject.getJSONArray("tags");
         List<String> tagList = new ArrayList<>();
+        // Limit the number of tags that are returned.
         int maxLength = jsonArray.length();
         if (manualLimitAndThresholdOverride && jsonArray.length() > Integer.parseInt(TAG_LIMIT)) {
             maxLength = Integer.parseInt(TAG_LIMIT);
         }
+        // Iterate through the JSON to extract the tags.
         for(int i = 0; i < maxLength; i++) {
             double confidence = jsonArray.getJSONObject(i).getDouble("confidence");
             double confidenceThreshold = Double.parseDouble(TAG_CONFIDENCE_THRESHOLD);
@@ -145,6 +157,7 @@ public class ImageTaggingUtility {
     }
     @Value("${apiAuth}")
     public void setApiAuth(String apiAuth) {
+        // Method to set the auth value
         basicAuth = apiAuth;
     }
 }
